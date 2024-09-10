@@ -28,9 +28,20 @@
  */
 package bdv.img.omezarr;
 
-import bdv.cache.SharedQueue;
-import bdv.util.volatiles.VolatileTypeMatcher;
-import bdv.util.volatiles.VolatileViews;
+import static bdv.img.omezarr.Multiscales.MULTI_SCALE_KEY;
+
+import java.io.IOException;
+import java.nio.file.Paths;
+import java.util.Arrays;
+
+import org.janelia.saalfeldlab.n5.DataType;
+import org.janelia.saalfeldlab.n5.DatasetAttributes;
+import org.janelia.saalfeldlab.n5.N5Exception;
+import org.janelia.saalfeldlab.n5.imglib2.N5Utils;
+import org.janelia.saalfeldlab.n5.s3.AmazonS3KeyValueAccess;
+import org.janelia.saalfeldlab.n5.zarr.N5ZarrReader;
+import org.janelia.saalfeldlab.n5.zarr.ZarrKeyValueReader;
+
 import com.amazonaws.ClientConfiguration;
 import com.amazonaws.auth.AWSCredentials;
 import com.amazonaws.auth.AWSStaticCredentialsProvider;
@@ -39,14 +50,14 @@ import com.amazonaws.auth.DefaultAWSCredentialsProviderChain;
 import com.amazonaws.regions.DefaultAwsRegionProviderChain;
 import com.amazonaws.regions.Regions;
 import com.amazonaws.retry.PredefinedRetryPolicies;
-import com.amazonaws.retry.RetryMode;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonArray;
-import java.io.IOException;
-import java.nio.file.Paths;
-import java.util.Arrays;
+
+import bdv.cache.SharedQueue;
+import bdv.util.volatiles.VolatileTypeMatcher;
+import bdv.util.volatiles.VolatileViews;
 import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.Volatile;
 import net.imglib2.cache.img.CachedCellImg;
@@ -63,15 +74,6 @@ import net.imglib2.type.numeric.integer.UnsignedShortType;
 import net.imglib2.type.numeric.real.DoubleType;
 import net.imglib2.type.numeric.real.FloatType;
 import net.imglib2.util.Cast;
-import org.janelia.saalfeldlab.n5.DataType;
-import org.janelia.saalfeldlab.n5.DatasetAttributes;
-import org.janelia.saalfeldlab.n5.N5Exception;
-import org.janelia.saalfeldlab.n5.imglib2.N5Utils;
-import org.janelia.saalfeldlab.n5.s3.AmazonS3KeyValueAccess;
-import org.janelia.saalfeldlab.n5.zarr.N5ZarrReader;
-import org.janelia.saalfeldlab.n5.zarr.ZarrKeyValueReader;
-
-import static bdv.img.omezarr.Multiscales.MULTI_SCALE_KEY;
 
 /**
  * As n5-zarr already provides dimensions in the java order, this class also stores dimensions in the java order.
@@ -81,6 +83,8 @@ import static bdv.img.omezarr.Multiscales.MULTI_SCALE_KEY;
  */
 public class MultiscaleImage< T extends NativeType< T > & RealType< T >, V extends Volatile< T > & NativeType< V > & RealType< V > >
 {
+		private static AWSCredentials s3Credentials = null;
+
 	/**
 	 * Helper class to store the base multiscale image path and other
 	 * access credentials for creating readed instances either on local FS or from S3.
@@ -92,7 +96,6 @@ public class MultiscaleImage< T extends NativeType< T > & RealType< T >, V exten
 	 */
 	public static class ZarrKeyValueReaderBuilder {
 		private AmazonS3 s3Client;
-		private AWSCredentials s3Credentials = null;
 		private final boolean s3Mode;
 		private final String bucketName;
 		private String multiscalePath;
@@ -117,12 +120,6 @@ public class MultiscaleImage< T extends NativeType< T > & RealType< T >, V exten
 										 final String multiscalePath)
 		{
 			this(null, bucketName, multiscalePath);
-		}
-		public void setCredentials(AWSCredentials s3Credentials)
-		{
-			if (!s3Mode)
-				return;
-			this.s3Credentials = s3Credentials;
 		}
 
 		public void setRegion(final String region)
@@ -153,7 +150,7 @@ public class MultiscaleImage< T extends NativeType< T > & RealType< T >, V exten
 						System.out.println( "Could not load AWS credentials, falling back to anonymous." );
 					}
 				}
-				credentialsProvider = new AWSStaticCredentialsProvider(s3Credentials == null ? new AnonymousAWSCredentials() : s3Credentials);
+				credentialsProvider = new AWSStaticCredentialsProvider( (s3Credentials == null) ? s3Credentials = new AnonymousAWSCredentials() : s3Credentials);
 				final ClientConfiguration s3Conf = new ClientConfiguration().withRetryPolicy(PredefinedRetryPolicies.getDefaultRetryPolicyWithCustomMaxRetries(32));
 				s3Client = AmazonS3ClientBuilder.standard().withRegion(s3Region).withCredentials(credentialsProvider).withClientConfiguration(s3Conf).build();
 			}
@@ -169,7 +166,6 @@ public class MultiscaleImage< T extends NativeType< T > & RealType< T >, V exten
 		public ZarrKeyValueReaderBuilder(final ZarrKeyValueReaderBuilder src)
 		{
 			this.multiscalePath = src.multiscalePath;
-			this.s3Credentials = src.s3Credentials;
 			this.s3Client = src.s3Client;
 			this.bucketName = src.bucketName;
 			this.s3Mode = src.s3Mode;
