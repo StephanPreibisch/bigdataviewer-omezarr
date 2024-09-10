@@ -123,7 +123,7 @@ public class ZarrImageLoader implements ViewerImgLoader, MultiResolutionImgLoade
                 }
                 final int numFetcherThreads = requestedNumFetcherThreads >= 0
                         ? requestedNumFetcherThreads
-                        : Math.max( 1, Runtime.getRuntime().availableProcessors() );
+                        : 256;
                 final SharedQueue queue = requestedSharedQueue != null
                         ? requestedSharedQueue
                         : ( createdSharedQueue = new SharedQueue( numFetcherThreads, maxNumLevels ) );
