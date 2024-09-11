@@ -332,8 +332,8 @@ public class MultiscaleImage< T extends NativeType< T > & RealType< T >, V exten
 	{
 		if ( multiscales != null ) return;
 		zarrKeyValueReaderBuilder.initS3Client();
-		try (final ZarrKeyValueReader zarrKeyValueReader = zarrKeyValueReaderBuilder.build())
-		{
+		/*try*/ final ZarrKeyValueReader zarrKeyValueReader = zarrKeyValueReaderBuilder.build();
+		//{
 			// Fetch metadata
 			//
 			Multiscales[] multiscalesArray = zarrKeyValueReader.getAttribute( "", MULTI_SCALE_KEY, Multiscales[].class );
@@ -385,12 +385,12 @@ public class MultiscaleImage< T extends NativeType< T > & RealType< T >, V exten
 			dimensions = multiDimensions[0];
 			dataType = multiDataType[0];
 			initTypes( dataType );
-		}
+		/*}
 		catch ( Exception e )
 		{
 			e.printStackTrace();
 			throw new RuntimeException( e );
-		}
+		}*/
 	}
 
 	private void initTypes( DataType dataType )
