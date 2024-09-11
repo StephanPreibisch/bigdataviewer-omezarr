@@ -308,10 +308,27 @@ public class MultiscaleImage< T extends NativeType< T > & RealType< T >, V exten
 
 	}
 
+	private void init()
+	{
+		// renew the token if it is expired
+		try
+		{
+			init2();
+		}
+		catch (Exception e)
+		{
+			synchronized (this)
+			{
+				s3Credentials = null;
+				init2();
+			}
+		}
+	}
+
 	/**
 	 * Read metadata, set image type, but does not initialize images because queue is not yet available
 	 */
-	private void init()
+	private void init2()
 	{
 		if ( multiscales != null ) return;
 		zarrKeyValueReaderBuilder.initS3Client();
