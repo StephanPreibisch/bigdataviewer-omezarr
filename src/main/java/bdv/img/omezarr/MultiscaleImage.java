@@ -275,10 +275,27 @@ public class MultiscaleImage< T extends NativeType< T > & RealType< T >, V exten
 //		this(new ZarrKeyValueReaderBuilder(multiscalePath));
 //	}
 
+	private void initImages()
+	{
+		// renew the token if it is expired
+		try
+		{
+			initImages2();
+		}
+		catch (Exception e)
+		{
+			synchronized (this)
+			{
+				s3Credentials = null;
+				initImages2();
+			}
+		}
+	}
+
 	/**
 	 * The delayed initialization of images is to have the shared queue set by ZarrImageLoader first
 	 */
-	private void initImages()
+	private void initImages2()
 	{
 		if (imgs != null)
 			return;
