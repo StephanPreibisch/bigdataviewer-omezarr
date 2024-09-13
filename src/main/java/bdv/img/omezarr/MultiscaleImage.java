@@ -287,6 +287,7 @@ public class MultiscaleImage< T extends NativeType< T > & RealType< T >, V exten
 			synchronized (this)
 			{
 				s3Credentials = null;
+				init();
 				initImages2();
 			}
 		}
